@@ -169,9 +169,9 @@ wpDiff = endWp - startWp;
 pi_p = atan2(wpDiff(2), wpDiff(1));
 crossTrackErr = crosstrackWpt(endWp(1), endWp(2), startWp(1), startWp(2), eta(1), eta(2));
 dist2Wp = norm(endWp - eta(1:2));
-lookAheadDist = sqrt(dist2Wp^2 - crossTrackErr^2);
-K_p_path = 1 / (lookAheadDist + 1e-3);
-
+alongTrackDist = sqrt(dist2Wp^2 - crossTrackErr^2);
+K_p_path = 1 / (alongTrackDist/5 + 500);
+yp_int = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MAIN LOOP
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -254,7 +254,7 @@ for i=1:Ns+1
         end
     end     
 
-    psi_ref = guidance(eta, startWp, endWp, pi_p); % Set heading to desired course
+    [psi_ref, yp_int_dot]  = guidance(eta, startWp, endWp, pi_p, yp_int); % Set heading to desired course
         
     u_d = U_d;
     r_d = 0;
@@ -318,6 +318,7 @@ for i=1:Ns+1
     xd = euler2(xd_dot,xd,h);
     integral_e_psi = euler2(integral_e_psi_dot,integral_e_psi,h);
     QM = euler2(QM_dot, QM, h);
+    yp_int = euler2(yp_int_dot, yp_int, h);
     
 end
 
@@ -400,12 +401,12 @@ xlabel('time (s)')
 
 figure(5)
 figure(gcf)
+plot(y,x,'linewidth',2); axis('equal')
 hold on
 siz=size(WP);
 for ii=1:(siz(2)-1)   
 plot([WP(2,ii), WP(2,ii+1)], [WP(1,ii), WP(1,ii+1)], 'r-x')
 end
-plot(y,x,'linewidth',2); axis('equal')
 title('North-East positions (m)');
 hold off
 
