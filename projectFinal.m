@@ -160,22 +160,17 @@ Ad = [0 1 0;
 Bd = [0 0 wref^3]';
 
 % Initialisation for path following
-
 startWp = WP(:,1);
 endWp = WP(:,2);
 numWps = length(WP);
 wpIdx = 2;
 wpDiff = endWp - startWp;
 pi_p = atan2(wpDiff(2), wpDiff(1));
-crossTrackErr = crosstrackWpt(endWp(1), endWp(2), startWp(1), startWp(2), eta(1), eta(2));
-dist2Wp = norm(endWp - eta(1:2));
-lookAheadDist = sqrt(dist2Wp^2 - crossTrackErr^2);
-K_p_path = 1 / (lookAheadDist + 1e-3);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MAIN LOOP
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-simdata = zeros(Ns+1,18);                % table of simulation data
+simdata = zeros(Ns+1,20);                % table of simulation data
 
 for i=1:Ns+1
 
@@ -254,7 +249,10 @@ for i=1:Ns+1
         end
     end     
 
-    psi_ref = guidance(eta, startWp, endWp, pi_p); % Set heading to desired course
+    course_ref = guidance(eta, startWp, endWp, pi_p); % Find desired course
+    psi_ref = course_ref; % Set heading to desired course
+    
+    
         
     u_d = U_d;
     r_d = 0;
@@ -306,9 +304,11 @@ for i=1:Ns+1
     
     beta = asin(nu_r(2) / sqrt( nu_r(1)^2 + nu_r(2)^2 + nu_r(3)^2 )); % Sideslip angle
     beta_c = atan2(nu(2), nu(1)); % Crab angle
+    course = eta(3) + beta_c;
     
     % store simulation data in a table (for testing)
-    simdata(i,:) = [t n_d delta_c n delta eta' nu' u_d psi_ref r_d beta beta_c, e_psi, integral_e_psi];       
+    eta(3) = ssa(eta(3));
+    simdata(i,:) = [t n_d delta_c n delta eta' nu' u_d psi_ref r_d beta beta_c, e_psi, integral_e_psi, ssa(course), course_ref];       
      
     % Euler integration
     eta = euler2(eta_dot,eta,h);
@@ -342,6 +342,8 @@ beta    = 180/pi * simdata(:,15);       % deg
 beta_c  = 180/pi * simdata(:,16);       % deg
 e_psi   = 180/pi * simdata(:,17);
 integral_e_psi = 180/pi * simdata(:,18);
+course = 180/pi * simdata(:,19);
+course_ref = 180/pi * simdata(:,20);
 
 figure(1)
 figure(gcf)
@@ -387,6 +389,15 @@ plot(t, beta_c, 'linewidth', 2);
 title('Crab angle (deg)');
 xlabel('time (s)')
 
+figure(5);
+plot(t, course, 'linewidth', 2);
+title('Course, desired course and heading (deg)');
+xlabel('time (s)')
+hold on;
+plot(t, course_ref, 'linewidth', 2);
+plot(t, psi, 'linewidth', 2);
+legend('course', 'desired course', 'heading');
+hold off;
 % figure(4)
 % figure(gcf)
 % subplot(211)
@@ -398,14 +409,14 @@ xlabel('time (s)')
 % title('Integral state (deg)');
 % xlabel('time (s)')
 
-figure(5)
+figure(6)
 figure(gcf)
+plot(y,x,'linewidth',2); axis('equal')
 hold on
 siz=size(WP);
 for ii=1:(siz(2)-1)   
 plot([WP(2,ii), WP(2,ii+1)], [WP(1,ii), WP(1,ii+1)], 'r-x')
 end
-plot(y,x,'linewidth',2); axis('equal')
 title('North-East positions (m)');
 hold off
 
